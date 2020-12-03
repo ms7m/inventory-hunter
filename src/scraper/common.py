@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 
 
 try:
-    import lxml
+    import lxml  # noqa: F401
     parser = 'lxml'
 except ImportError:
     parser = 'html.parser'
@@ -38,7 +38,7 @@ class ScrapeResult(ABC):
         if not tag:
             return
 
-        price_str = tag.text.strip()
+        price_str = tag if isinstance(tag, str) else tag.text.strip()
         if not price_str:
             return
 
@@ -57,14 +57,14 @@ class ScrapeResult(ABC):
 class GenericScrapeResult(ScrapeResult):
     def parse(self):
         # not perfect but usually good enough
-        if self.has_phrase('add to cart'):
+        if self.has_phrase('add to cart') or self.has_phrase('add to basket'):
             self.alert_subject = 'In Stock'
             self.alert_content = self.url
 
 
 class Scraper(ABC):
-    def __init__(self, driver, url):
-        self.driver = driver
+    def __init__(self, drivers, url):
+        self.driver = getattr(drivers, self.get_driver_type())
         self.url = url
         self.last_result = None
 
@@ -81,6 +81,11 @@ class Scraper(ABC):
     @staticmethod
     @abstractmethod
     def get_domain():
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def get_driver_type():
         pass
 
     @staticmethod
@@ -115,6 +120,10 @@ class GenericScraper(Scraper):
         return 'generic'
 
     @staticmethod
+    def get_driver_type():
+        return 'requests'
+
+    @staticmethod
     def get_result_type():
         return GenericScrapeResult
 
@@ -129,12 +138,12 @@ class ScraperFactory:
     registry = dict()
 
     @classmethod
-    def create(cls, driver, url):
+    def create(cls, drivers, url):
         for domain, scraper_type in cls.registry.items():
             if domain in url.netloc:
-                return scraper_type(driver, url)
+                return scraper_type(drivers, url)
         logging.warning(f'warning: using generic scraper for url: {url}')
-        return GenericScraper(driver, url)
+        return GenericScraper(drivers, url)
 
     @classmethod
     def register(cls, scraper_type):

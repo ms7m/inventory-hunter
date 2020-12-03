@@ -1,16 +1,12 @@
 import logging
 import sched
-import smtplib
 import sys
-
-from email.message import EmailMessage
-from email.utils import formatdate
-from scraper import init_scrapers
 
 from alerter import EmailAlerter, DiscordAlerter, SlackAlerter
 
+
 class Engine:
-    def __init__(self, args, config, driver):
+    def __init__(self, args, config, scrapers):
 
         alert_types = {
             "email": EmailAlerter,
@@ -19,12 +15,11 @@ class Engine:
         }
         self.alerter = alert_types[args.alerter_type](args)
         logging.debug(f"selected alerter: {args.alerter_type} -> {self.alerter}")
-    
+
         self.refresh_interval = config.refresh_interval
         self.max_price = config.max_price
         self.scheduler = sched.scheduler()
-        self.scrapers = init_scrapers(driver, config.urls)
-        for s in self.scrapers:
+        for s in scrapers:
             self.schedule(s)
 
     def run(self):
@@ -102,6 +97,6 @@ class Engine:
         self.alerter(subject=result.alert_subject, content=result.alert_content)
 
 
-def hunt(args, config, driver):
-    engine = Engine(args, config, driver)
+def hunt(args, config, scrapers):
+    engine = Engine(args, config, scrapers)
     engine.run()
