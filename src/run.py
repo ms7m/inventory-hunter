@@ -30,6 +30,12 @@ def parse_args():
 
     # discord (or any other webhook based alerter) - related arguments
     parser.add_argument("-w", "--webhook", help="A valid HTTP url for a POST request.", dest="webhook_url")
+
+    # redis related pub sub
+    parser.add_argument("-rh", "--redisHost", help="redis host name", dest="redis_host")
+    parser.add_argument("-rp", "--redisPort", help="redis port name", dest="redis_port")
+    parser.add_argument("-rc", "--redisChannel", help="Redis channel name", dest="redis_pub_channel")
+
     return parser.parse_args()
 
 

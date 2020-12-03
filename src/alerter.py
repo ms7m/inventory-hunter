@@ -6,6 +6,8 @@ import traceback
 from email.message import EmailMessage
 from email.utils import formatdate
 
+from redis import Redis
+
 
 class AlerterBase:
     def __init__(self, *args, **kwargs):
@@ -26,6 +28,30 @@ class AlerterTest(AlerterBase):
 
     def _notification_function(self, **kwargs):
         logging.debug(f"notification function kwargs: {kwargs}")
+
+class RedisPubSubAlerter(AlerterBase):
+    def __init__(self, args):
+        self._redis_host = args.redis_host
+        self._redis_port = args.redis_port
+        self._redis_pub_channel_name = args.redis_pub_channel
+        try:
+            self._redis_client = Redis(
+                host=self._redis_host,
+                port=int(self._redis_port),
+                db=0
+            )
+        except Exception:
+            logging.error(f"Unable to establish a connection to redis. {traceback.format_exc()}")
+            raise
+        super().__init__(args)
+
+    def _notification_function(self, **kwargs):
+        try:
+            self._redis_client.publish(self._redis_pub_channel_name, kwargs.get("content"))
+            logging.info(f"Sent to redis channel: {self._redis_pub_channel_name}")
+        except Exception:
+            logging.error(f"Unable to send to channel. {traceback.format_exc()}")
+            return
 
 
 class SlackAlerter(AlerterBase):
